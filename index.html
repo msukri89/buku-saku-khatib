@@ -4,133 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buku Saku Khatib</title>
-    
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#065f46">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-emerald-50 min-h-screen flex flex-col items-center p-4 font-serif">
-
-    <main class="w-full max-w-md bg-white shadow-2xl rounded-xl overflow-hidden mt-2 border-t-8 border-emerald-800">
-        
-        <header class="bg-emerald-900 text-white text-center py-6 px-4">
-            <h1 class="text-2xl font-bold tracking-wider">BUKU SAKU KHATIB</h1>
-            <p class="text-emerald-200 text-sm mt-1 font-sans">Generator Khutbah Cerdas</p>
-        </header>
-
-        <div class="p-6">
-            <div class="mb-5">
-                <label for="temaKhutbah" class="block text-emerald-900 font-semibold mb-2">Tema Khutbah:</label>
-                <input type="text" id="temaKhutbah" 
-                    class="w-full p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-600 outline-none font-sans" 
-                    placeholder="Contoh: Sabar menghadapi cobaan...">
-            </div>
-
-            <button id="generateBtn" 
-                class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 rounded-lg transition-colors shadow-md flex justify-center items-center gap-2 font-sans">
-                <span>Susun Khutbah</span>
-            </button>
-
-            <div id="loadingIndicator" class="hidden mt-6 p-4 bg-emerald-100 rounded-lg border border-emerald-200 text-center text-emerald-800 font-sans text-sm">
-                <span class="animate-pulse font-bold block">Meminta inspirasi khutbah...</span>
-                Mohon tunggu beberapa detik.
-            </div>
-
-            <div id="hasilKhutbahContainer" class="hidden mt-6 border-t border-emerald-100 pt-6">
-                <h2 class="text-emerald-800 font-bold mb-4 text-center border-b pb-2">Teks Khutbah</h2>
-                <div id="hasilKhutbah" class="text-slate-800 leading-relaxed text-sm md:text-base text-justify">
-                    </div>
-            </div>
-        </div>
+<body class="bg-emerald-50 min-h-screen p-4 font-serif">
+    <main class="max-w-md mx-auto bg-white p-6 rounded-xl shadow-lg border-t-8 border-emerald-800">
+        <h1 class="text-xl font-bold text-center text-emerald-900 mb-4">BUKU SAKU KHATIB</h1>
+        <input type="text" id="tema" class="w-full p-3 border rounded-lg mb-4" placeholder="Tema khutbah...">
+        <button id="btn" class="w-full bg-emerald-700 text-white p-3 rounded-lg font-bold">Susun Khutbah</button>
+        <div id="hasil" class="mt-6 text-sm leading-relaxed text-justify"></div>
     </main>
 
     <script>
-        // ==========================================
-        // LOGIKA AI MENGGUNAKAN CLOUD API (Gemini)
-        // ==========================================
-        const generateBtn = document.getElementById('generateBtn');
-        const temaKhutbah = document.getElementById('temaKhutbah');
-        const loadingIndicator = document.getElementById('loadingIndicator');
-        const hasilKhutbahContainer = document.getElementById('hasilKhutbahContainer');
-        const hasilKhutbah = document.getElementById('hasilKhutbah');
-
-        // Fungsi merapikan teks dari AI (mengubah tanda bintang jadi huruf tebal dan spasi baris)
-        function formatTeks(teks) {
-            return teks
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')             // Italic
-                .replace(/\n/g, '<br>');                          // Enter/Baris baru
-        }
-
-        generateBtn.addEventListener('click', async () => {
-            const tema = temaKhutbah.value.trim();
-            if (!tema) {
-                alert("Harap masukkan tema khutbah terlebih dahulu.");
-                return;
-            }
-
-            // Atur tampilan UI ke mode loading
-            generateBtn.disabled = true;
-            generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            loadingIndicator.classList.remove('hidden');
-            hasilKhutbahContainer.classList.add('hidden');
-            hasilKhutbah.innerHTML = "";
-
-            // -------------------------------------------------------------
-            // PASTE API KEY ANDA DI DALAM TANDA KUTIP DI BAWAH INI
-            // -------------------------------------------------------------
-            const apiKey = 'AIzaSyBax2Su1vrYSoihy0WOAjkYNZUuKdS-3nE';
+        document.getElementById('btn').addEventListener('click', async () => {
+            const tema = document.getElementById('tema').value;
+            const hasil = document.getElementById('hasil');
+            hasil.innerHTML = "Menyusun khutbah...";
             
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-            const promptSistem = `Anda adalah seorang asisten pembuat teks khutbah Jumat. Buatkan khutbah yang menyentuh hati dengan bahasa Indonesia yang santun. Struktur: 1. Mukadimah bahasa Arab singkat, 2. Isi khutbah sesuai tema, 3. Kesimpulan. Tema: ${tema}`;
-
-            try {
-                // Mengirim permintaan ke server Google
-                const respons = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [{ text: promptSistem }]
-                        }]
-                    })
-                });
-
-                if (!respons.ok) {
-                    throw new Error(`Gagal menghubungi server. Status: ${respons.status}`);
-                }
-
-                const data = await respons.json();
-                
-                // Mengambil hasil teks dari struktur JSON Google
-                let teksJawaban = data.candidates[0].content.parts[0].text;
-                
-                // Menampilkan hasil yang sudah dirapikan
-                hasilKhutbah.innerHTML = formatTeks(teksJawaban);
-                hasilKhutbahContainer.classList.remove('hidden');
-
-            } catch (error) {
-                console.error("Error AI:", error);
-                hasilKhutbah.innerHTML = `<span class="text-red-600 font-bold">Terjadi kesalahan:</span><br>${error.message}`;
-                hasilKhutbahContainer.classList.remove('hidden');
-            } finally {
-                // Kembalikan tombol ke keadaan semula
-                generateBtn.disabled = false;
-                generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                loadingIndicator.classList.add('hidden');
-            }
-        });
-
-        // ==========================================
-        // PENDAFTARAN SERVICE WORKER (PWA)
-        // ==========================================
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').catch(err => console.log('Pendaftaran sw.js gagal', err));
+            // Masukkan URL JEMBATAN Anda di bawah ini
+            const urlJembatan = "https://script.google.com/macros/s/AKfycbxUDSy_AVCjESvruMvsQMbzgL_ptPw46UGppI8WFwDxHs5NvH0qYqSiuh9hYAMwB0BLYw/exec";
+            
+            const resp = await fetch(urlJembatan, {
+                method: "POST",
+                body: JSON.stringify({ tema: tema })
             });
-        }
+            const data = await resp.json();
+            hasil.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
+        });
     </script>
 </body>
 </html>
