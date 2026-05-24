@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buku Saku Khatib</title>
-    <meta name="description" content="Generator Khutbah Jumat dengan AI Bawaan Browser">
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#065f46">
@@ -20,10 +19,6 @@
         </header>
 
         <div class="p-6">
-            <div id="aiWarning" class="hidden mb-4 p-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 text-xs font-sans rounded">
-                Fitur AI bawaan browser belum aktif. Pastikan Anda menggunakan Chrome terbaru dan flag AI sudah diaktifkan.
-            </div>
-
             <div class="mb-5">
                 <label for="temaKhutbah" class="block text-emerald-900 font-semibold mb-2">Tema Khutbah:</label>
                 <input type="text" id="temaKhutbah" 
@@ -33,15 +28,16 @@
 
             <button id="generateBtn" 
                 class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 rounded-lg transition-colors shadow-md flex justify-center items-center gap-2 font-sans">
-                <span>Susun Khutbah</span>
+                <span>Susun Khutbah (Mulai Unduh AI)</span>
             </button>
 
-            <div id="loadingIndicator" class="hidden mt-6 text-center text-emerald-600 font-sans animate-pulse text-sm">
-                AI sedang menyusun khutbah Anda...
+            <div id="loadingIndicator" class="hidden mt-6 p-4 bg-emerald-100 rounded-lg border border-emerald-200 text-center text-emerald-800 font-sans text-sm">
+                <span class="animate-pulse font-bold block mb-2 text-base">Mesin AI Sedang Diproses...</span>
+                Jika ini pertama kalinya Anda klik tombol ini, Chrome sedang mendownload model AI (~2GB) di latar belakang. Proses ini bisa memakan waktu hingga 15 menit. <b>Mohon jangan tutup halaman ini.</b>
             </div>
 
             <div id="hasilKhutbahContainer" class="hidden mt-6 border-t border-emerald-100 pt-6">
-                <h2 class="text-emerald-800 font-bold mb-3 text-center border-b pb-2">Teks Khutbah</h2>
+                <h2 class="text-emerald-800 font-bold mb-3 text-center border-b pb-2">Status / Hasil Khutbah</h2>
                 <div id="hasilKhutbah" class="text-slate-800 leading-relaxed whitespace-pre-wrap text-sm md:text-base">
                     </div>
             </div>
@@ -50,27 +46,13 @@
 
     <script>
         // ==========================================
-        // 1. LOGIKA AI BAWAAN BROWSER (Sintaks Baru)
+        // LOGIKA PENGGERAK AI (Bebas Kunci)
         // ==========================================
         const generateBtn = document.getElementById('generateBtn');
         const temaKhutbah = document.getElementById('temaKhutbah');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const hasilKhutbahContainer = document.getElementById('hasilKhutbahContainer');
         const hasilKhutbah = document.getElementById('hasilKhutbah');
-        const aiWarning = document.getElementById('aiWarning');
-
-        // Fungsi mengecek apakah browser mendukung AI dengan objek LanguageModel
-        async function checkBrowserAI() {
-            if (typeof LanguageModel === 'undefined') {
-                aiWarning.classList.remove('hidden');
-                generateBtn.disabled = true;
-                generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                return false;
-            }
-            return true;
-        }
-
-        checkBrowserAI();
 
         generateBtn.addEventListener('click', async () => {
             const tema = temaKhutbah.value.trim();
@@ -79,50 +61,57 @@
                 return;
             }
 
-            // Atur tampilan UI ke mode loading
+            // Ubah tampilan saat memproses
             generateBtn.disabled = true;
-            generateBtn.classList.add('opacity-50');
+            generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
             loadingIndicator.classList.remove('hidden');
             hasilKhutbahContainer.classList.add('hidden');
             hasilKhutbah.innerHTML = "";
 
             try {
-                // Memanggil AI Bawaan Browser menggunakan sintaks Chrome terbaru
-                const aiModel = await LanguageModel.create({
-                    systemPrompt: "Anda adalah asisten pembuat teks khutbah Jumat. Buat khutbah singkat dengan bahasa Indonesia yang santun, terdiri dari: 1. Mukadimah singkat, 2. Isi khutbah sesuai tema, 3. Kesimpulan. Jangan gunakan format markdown yang rumit."
-                });
+                let aiModel;
                 
-                const promptUser = `Buatkan khutbah Jumat dengan tema: ${tema}`;
+                // Cek secara paksa semua jalan masuk AI yang ada di browser Anda
+                if (window.ai && window.ai.languageModel) {
+                    aiModel = await window.ai.languageModel.create({ systemPrompt: "Anda adalah asisten pembuat teks khutbah Jumat." });
+                } else if (typeof LanguageModel !== 'undefined' && LanguageModel.create) {
+                    aiModel = await LanguageModel.create({ systemPrompt: "Anda adalah asisten pembuat teks khutbah Jumat." });
+                } else if (window.ai && window.ai.createTextSession) {
+                    aiModel = await window.ai.createTextSession();
+                } else {
+                    throw new Error("Mesin AI gagal diakses. Pastikan pengaturan flags sudah benar-benar disimpan.");
+                }
+                
+                // Minta AI membuat teks
+                const promptUser = `Buatkan khutbah Jumat singkat dengan tema: ${tema}. Terdiri dari mukadimah, isi, dan kesimpulan.`;
                 const responsAI = await aiModel.prompt(promptUser);
                 
-                // Menampilkan hasil
+                // Tampilkan hasil
                 hasilKhutbah.innerText = responsAI;
                 hasilKhutbahContainer.classList.remove('hidden');
 
             } catch (error) {
-                console.error("Error AI:", error);
-                hasilKhutbah.innerText = "Maaf, terjadi kesalahan saat menyusun khutbah. Pastikan model AI sudah terunduh di browser Anda.";
+                // Tampilkan error dengan jelas ke layar agar kita tahu penyebabnya
+                console.error("Laporan Error AI:", error);
+                hasilKhutbah.innerHTML = `
+                    <span style="color:#dc2626; font-weight:bold;">Terdapat Kendala Saat Memulai AI:</span><br><br>
+                    <span style="font-family:monospace; background:#f1f5f9; padding:4px; border-radius:4px; font-size:12px;">${error.message}</span><br><br>
+                    <span style="color:#64748b; font-size:13px;">Silakan cek tab <b style="color:#334155;">chrome://components</b> untuk memantau apakah baris <b>Optimization Guide</b> masih berstatus <i>Downloading</i>. Jika ya, tunggu sampai selesai lalu klik tombol ini lagi.</span>`;
                 hasilKhutbahContainer.classList.remove('hidden');
             } finally {
-                // Kembalikan tombol
+                // Kembalikan tombol seperti semula
                 generateBtn.disabled = false;
-                generateBtn.classList.remove('opacity-50');
+                generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 loadingIndicator.classList.add('hidden');
             }
         });
 
         // ==========================================
-        // 2. PENDAFTARAN SERVICE WORKER (Untuk PWA)
+        // PENDAFTARAN SERVICE WORKER (PWA)
         // ==========================================
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker berhasil didaftarkan dengan scope: ', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('Pendaftaran ServiceWorker gagal: ', error);
-                    });
+                navigator.serviceWorker.register('sw.js').catch(err => console.log('Gagal mendaftar sw.js', err));
             });
         }
     </script>
