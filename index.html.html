@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buku Saku Khatib</title>
+    <meta name="description" content="Generator Khutbah Jumat dengan AI Bawaan Browser">
+    <meta name="theme-color" content="#065f46">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-emerald-50 min-h-screen flex flex-col items-center p-4 font-serif">
+
+    <main class="w-full max-w-md bg-white shadow-2xl rounded-xl overflow-hidden mt-4 border-t-8 border-emerald-800">
+        
+        <header class="bg-emerald-900 text-white text-center py-6 px-4">
+            <h1 class="text-2xl font-bold tracking-wider">BUKU SAKU KHATIB</h1>
+            <p class="text-emerald-200 text-sm mt-1 font-sans">Generator Khutbah AI Offline</p>
+        </header>
+
+        <div class="p-6">
+            <div id="aiWarning" class="hidden mb-4 p-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 text-xs font-sans rounded">
+                Fitur AI bawaan browser belum aktif. Pastikan Anda menggunakan Chrome versi terbaru dan telah mengaktifkan flag AI.
+            </div>
+
+            <div class="mb-5">
+                <label for="temaKhutbah" class="block text-emerald-900 font-semibold mb-2">Tema Khutbah:</label>
+                <input type="text" id="temaKhutbah" 
+                    class="w-full p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-600 outline-none font-sans" 
+                    placeholder="Contoh: Sabar menghadapi cobaan, Keutamaan sedekah...">
+            </div>
+
+            <button id="generateBtn" 
+                class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 rounded-lg transition-colors shadow-md flex justify-center items-center gap-2 font-sans">
+                <span>Susun Khutbah</span>
+            </button>
+
+            <div id="loadingIndicator" class="hidden mt-6 text-center text-emerald-600 font-sans animate-pulse text-sm">
+                AI sedang menyusun khutbah Anda...
+            </div>
+
+            <div id="hasilKhutbahContainer" class="hidden mt-6 border-t border-emerald-100 pt-6">
+                <h2 class="text-emerald-800 font-bold mb-3 text-center border-b pb-2">Teks Khutbah</h2>
+                <div id="hasilKhutbah" class="text-slate-800 leading-relaxed whitespace-pre-wrap text-sm md:text-base">
+                    </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Logika AI Bawaan Browser (Chrome Built-in AI)
+        const generateBtn = document.getElementById('generateBtn');
+        const temaKhutbah = document.getElementById('temaKhutbah');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const hasilKhutbahContainer = document.getElementById('hasilKhutbahContainer');
+        const hasilKhutbah = document.getElementById('hasilKhutbah');
+        const aiWarning = document.getElementById('aiWarning');
+
+        // Fungsi mengecek apakah browser mendukung AI bawaan
+        async function checkBrowserAI() {
+            if (!("ai" in window) || !("languageModel" in window.ai)) {
+                aiWarning.classList.remove('hidden');
+                generateBtn.disabled = true;
+                generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                return false;
+            }
+            return true;
+        }
+
+        checkBrowserAI();
+
+        generateBtn.addEventListener('click', async () => {
+            const tema = temaKhutbah.value.trim();
+            if (!tema) {
+                alert("Harap masukkan tema khutbah terlebih dahulu.");
+                return;
+            }
+
+            // Atur tampilan UI ke mode loading
+            generateBtn.disabled = true;
+            generateBtn.classList.add('opacity-50');
+            loadingIndicator.classList.remove('hidden');
+            hasilKhutbahContainer.classList.add('hidden');
+            hasilKhutbah.innerHTML = "";
+
+            try {
+                // Memanggil AI Bawaan Browser
+                const aiModel = await window.ai.languageModel.create({
+                    systemPrompt: "Anda adalah asisten pembuat teks khutbah Jumat. Buat khutbah singkat dengan bahasa Indonesia yang santun, terdiri dari: 1. Mukadimah singkat, 2. Isi khutbah sesuai tema, 3. Kesimpulan. Jangan gunakan format markdown yang rumit."
+                });
+                
+                const promptUser = `Buatkan khutbah Jumat dengan tema: ${tema}`;
+                const responsAI = await aiModel.prompt(promptUser);
+                
+                // Menampilkan hasil
+                hasilKhutbah.innerText = responsAI;
+                hasilKhutbahContainer.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error AI:", error);
+                hasilKhutbah.innerText = "Maaf, terjadi kesalahan saat menyusun khutbah. Pastikan model AI sudah terunduh di browser Anda.";
+                hasilKhutbahContainer.classList.remove('hidden');
+            } finally {
+                // Kembalikan tombol
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('opacity-50');
+                loadingIndicator.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
