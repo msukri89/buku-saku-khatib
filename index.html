@@ -23,7 +23,7 @@
                 <label for="temaKhutbah" class="block text-emerald-900 font-semibold mb-2">Tema Khutbah:</label>
                 <input type="text" id="temaKhutbah" 
                     class="w-full p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-600 outline-none font-sans" 
-                    placeholder="Contoh: Pentingnya Menjaga Amanah...">
+                    placeholder="Contoh: Keutamaan Istighfar...">
             </div>
 
             <button id="generateBtn" 
@@ -36,7 +36,7 @@
             </div>
 
             <div id="hasilKhutbahContainer" class="hidden mt-6 border-t border-emerald-100 pt-6">
-                <h2 class="text-emerald-800 font-bold mb-4 text-center border-b pb-2">Naskah Khutbah</h2>
+                <h2 class="text-emerald-800 font-bold mb-4 text-center border-b pb-2">Naskah Khutbah / Laporan</h2>
                 <div id="hasilKhutbah" class="text-slate-800 leading-relaxed text-sm md:text-base text-justify whitespace-pre-wrap">
                     </div>
             </div>
@@ -70,41 +70,42 @@
             hasilKhutbahContainer.classList.add('hidden');
             hasilKhutbah.innerHTML = "";
 
-            // URL Anda sudah saya tanam langsung di sini
+            // URL Jembatan Anda sudah dipasang otomatis
             const urlJembatan = "https://script.google.com/macros/s/AKfycbxUDSy_AVCjESvruMvsQMbzgL_ptPw46UGppI8WFwDxHs5NvH0qYqSiuh9hYAMwB0BLYw/exec";
 
             try {
-                // Konfigurasi fetch yang lebih kuat menahan redirect
                 const respons = await fetch(urlJembatan, {
-                    redirect: "follow",
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8'
-                    },
+                    headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify({ tema: tema })
                 });
 
                 const responText = await respons.text();
 
-                // Deteksi jika Google masih mengirim halaman HTML
-                if (responText.includes("<!DOCTYPE html>") || responText.includes("<html")) {
-                    throw new Error("Akses Ditolak Server Google. Pastikan Anda sudah 'Deploy sebagai Versi Baru' dan set akses ke 'Siapa saja'.");
+                // Membaca Surat dari Google
+                if (responText.includes("<html")) {
+                    throw new Error("Jembatan belum terbuka. Pastikan 'Deploy' ulang sebagai Versi Baru dan set Siapa Saja.");
                 }
 
                 const data = JSON.parse(responText);
                 
-                if (data.error) throw new Error("Kendala AI: " + data.error);
+                // Menerjemahkan Surat Penolakan AI (jika ada)
+                if (data.error) {
+                    let pesanPenolakan = typeof data.error === 'object' ? data.error.message : data.error;
+                    throw new Error("Dari Mesin AI: " + pesanPenolakan);
+                }
 
+                // Jika berhasil, tampilkan khutbah!
                 let teksJawaban = data.candidates[0].content.parts[0].text;
-                
                 hasilKhutbah.innerHTML = formatTeks(teksJawaban);
                 hasilKhutbahContainer.classList.remove('hidden');
 
             } catch (error) {
-                let pesanError = error.message || String(error);
                 hasilKhutbah.innerHTML = `
                     <span class="text-red-600 font-bold">Aplikasi Mengalami Kendala:</span><br><br>
-                    <span class="text-sm font-sans text-slate-700 bg-red-50 p-2 rounded block border border-red-200">${pesanError}</span>`;
+                    <span class="text-sm font-sans text-slate-700 bg-red-50 p-3 rounded block border border-red-200">
+                        ${error.message}
+                    </span>`;
                 hasilKhutbahContainer.classList.remove('hidden');
             } finally {
                 generateBtn.disabled = false;
