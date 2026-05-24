@@ -4,33 +4,125 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buku Saku Khatib</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#065f46">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-emerald-50 min-h-screen p-4 font-serif">
-    <main class="max-w-md mx-auto bg-white p-6 rounded-xl shadow-lg border-t-8 border-emerald-800">
-        <h1 class="text-xl font-bold text-center text-emerald-900 mb-4">BUKU SAKU KHATIB</h1>
-        <input type="text" id="tema" class="w-full p-3 border rounded-lg mb-4" placeholder="Tema khutbah...">
-        <button id="btn" class="w-full bg-emerald-700 text-white p-3 rounded-lg font-bold">Susun Khutbah</button>
-        <div id="hasil" class="mt-6 text-sm leading-relaxed text-justify"></div>
+<body class="bg-emerald-50 min-h-screen flex flex-col items-center p-4 font-serif">
+
+    <main class="w-full max-w-md bg-white shadow-2xl rounded-2xl overflow-hidden mt-4 border-t-8 border-emerald-800">
+        
+        <header class="bg-emerald-900 text-white text-center py-6 px-4">
+            <h1 class="text-2xl font-bold tracking-wider">BUKU SAKU KHATIB</h1>
+            <p class="text-emerald-200 text-sm mt-1 font-sans">Generator Khutbah Cerdas Mobile</p>
+        </header>
+
+        <div class="p-6">
+            <div class="mb-5">
+                <label for="temaKhutbah" class="block text-emerald-900 font-semibold mb-2">Tema Khutbah:</label>
+                <input type="text" id="temaKhutbah" 
+                    class="w-full p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-600 outline-none font-sans" 
+                    placeholder="Contoh: Keutamaan Istighfar, Berbakti Kedua Orang Tua...">
+            </div>
+
+            <button id="generateBtn" 
+                class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 rounded-lg transition-colors shadow-md flex justify-center items-center gap-2 font-sans">
+                <span>Susun Khutbah</span>
+            </button>
+
+            <div id="loadingIndicator" class="hidden mt-6 p-4 bg-emerald-100 rounded-lg border border-emerald-200 text-center text-emerald-800 font-sans text-sm animate-pulse">
+                <b>Sedang merangkai kalimat khutbah...</b><br>Mohon tunggu sekitar 5 sampai 10 detik.
+            </div>
+
+            <div id="hasilKhutbahContainer" class="hidden mt-6 border-t border-emerald-100 pt-6">
+                <h2 class="text-emerald-800 font-bold mb-4 text-center border-b pb-2">Naskah Khutbah</h2>
+                <div id="hasilKhutbah" class="text-slate-800 leading-relaxed text-sm md:text-base text-justify whitespace-pre-wrap">
+                    </div>
+            </div>
+        </div>
     </main>
 
     <script>
-        document.getElementById('btn').addEventListener('click', async () => {
-            const tema = document.getElementById('tema').value;
-            const hasil = document.getElementById('hasil');
-            hasil.innerHTML = "Menyusun khutbah...";
-            
-            // Masukkan URL JEMBATAN Anda di bawah ini
+        const generateBtn = document.getElementById('generateBtn');
+        const temaKhutbah = document.getElementById('temaKhutbah');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const hasilKhutbahContainer = document.getElementById('hasilKhutbahContainer');
+        const hasilKhutbah = document.getElementById('hasilKhutbah');
+
+        // Fungsi merapikan tulisan AI agar nyaman dibaca di layar HP
+        function formatTeks(teks) {
+            return teks
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>');
+        }
+
+        generateBtn.addEventListener('click', async () => {
+            const tema = temaKhutbah.value.trim();
+            if (!tema) {
+                alert("Harap masukkan tema khutbah terlebih dahulu.");
+                return;
+            }
+
+            // Nyalakan mode loading
+            generateBtn.disabled = true;
+            generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            loadingIndicator.classList.remove('hidden');
+            hasilKhutbahContainer.classList.add('hidden');
+            hasilKhutbah.innerHTML = "";
+
+            // ============================================================
+            // PASTE / TEMPEL URL JEMBATAN GOOGLE SCRIPT ANDA DI BAWAH INI
+            // ============================================================
             const urlJembatan = "https://script.google.com/macros/s/AKfycbxUDSy_AVCjESvruMvsQMbzgL_ptPw46UGppI8WFwDxHs5NvH0qYqSiuh9hYAMwB0BLYw/exec";
-            
-            const resp = await fetch("URL_JEMBATAN_ANDA_DI_SINI", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ tema: tema })
-});
-            const data = await resp.json();
-            hasil.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
+
+            try {
+                // Mengirim data menggunakan metode text/plain demi memotong blokir keamanan browser HP
+                const respons = await fetch(urlJembatan, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain'
+                    },
+                    body: JSON.stringify({ tema: tema })
+                });
+
+                if (!respons.ok) throw new Error("Jembatan sistem tidak merespons.");
+
+                const data = await respons.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Ambil hasil teks khutbah dari struktur data Google
+                let teksJawaban = data.candidates[0].content.parts[0].text;
+                
+                // Tampilkan ke layar HP
+                hasilKhutbah.innerHTML = formatTeks(teksJawaban);
+                hasilKhutbahContainer.classList.remove('hidden');
+
+            } catch (error) {
+                console.error(error);
+                hasilKhutbah.innerHTML = `
+                    <span class="text-red-600 font-bold">Aplikasi Mengalami Kendala:</span><br>
+                    <span class="text-xs text-slate-500">${error.message}</span><br><br>
+                    <span class="text-xs text-slate-600">Pastikan Anda sudah mengganti tulisan <b class="text-slate-900">'URL_JEMBATAN_ANDA_DI_SINI'</b> dengan alamat Web App dari Google Apps Script Anda secara benar.</span>`;
+                hasilKhutbahContainer.classList.remove('hidden');
+            } finally {
+                // Matikan mode loading
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                loadingIndicator.classList.add('hidden');
+            }
         });
+
+        // Mendaftarkan sistem PWA agar bisa diinstal di HP offline
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
+            });
+        }
     </script>
 </body>
 </html>
