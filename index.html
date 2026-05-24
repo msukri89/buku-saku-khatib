@@ -36,7 +36,7 @@
             </div>
 
             <div id="hasilKhutbahContainer" class="hidden mt-6 border-t border-emerald-100 pt-6">
-                <h2 class="text-emerald-800 font-bold mb-4 text-center border-b pb-2">Naskah Khutbah / Laporan</h2>
+                <h2 class="text-emerald-800 font-bold mb-4 text-center border-b pb-2">Naskah Khutbah</h2>
                 <div id="hasilKhutbah" class="text-slate-800 leading-relaxed text-sm md:text-base text-justify whitespace-pre-wrap">
                     </div>
             </div>
@@ -70,32 +70,27 @@
             hasilKhutbahContainer.classList.add('hidden');
             hasilKhutbah.innerHTML = "";
 
-            // URL Jembatan Anda sudah dipasang otomatis
+            // URL Jembatan Anda
             const urlJembatan = "https://script.google.com/macros/s/AKfycbxUDSy_AVCjESvruMvsQMbzgL_ptPw46UGppI8WFwDxHs5NvH0qYqSiuh9hYAMwB0BLYw/exec";
 
             try {
-                const respons = await fetch(urlJembatan, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify({ tema: tema })
-                });
+                // Trik Anti-Blokir: Menempelkan tema langsung di ekor URL (Metode GET)
+                const targetUrl = urlJembatan + "?tema=" + encodeURIComponent(tema);
 
+                const respons = await fetch(targetUrl);
                 const responText = await respons.text();
 
-                // Membaca Surat dari Google
                 if (responText.includes("<html")) {
-                    throw new Error("Jembatan belum terbuka. Pastikan 'Deploy' ulang sebagai Versi Baru dan set Siapa Saja.");
+                    throw new Error("Gagal: Jembatan masih menolak. Pastikan Anda sudah 'Deploy' sebagai 'Versi Baru'.");
                 }
 
                 const data = JSON.parse(responText);
                 
-                // Menerjemahkan Surat Penolakan AI (jika ada)
                 if (data.error) {
                     let pesanPenolakan = typeof data.error === 'object' ? data.error.message : data.error;
                     throw new Error("Dari Mesin AI: " + pesanPenolakan);
                 }
 
-                // Jika berhasil, tampilkan khutbah!
                 let teksJawaban = data.candidates[0].content.parts[0].text;
                 hasilKhutbah.innerHTML = formatTeks(teksJawaban);
                 hasilKhutbahContainer.classList.remove('hidden');
