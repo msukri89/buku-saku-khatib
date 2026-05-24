@@ -23,7 +23,7 @@
                 <label for="temaKhutbah" class="block text-emerald-900 font-semibold mb-2">Tema Khutbah:</label>
                 <input type="text" id="temaKhutbah" 
                     class="w-full p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-600 outline-none font-sans" 
-                    placeholder="Contoh: Keutamaan Istighfar, Berbakti Kedua Orang Tua...">
+                    placeholder="Contoh: Pentingnya Menjaga Amanah...">
             </div>
 
             <button id="generateBtn" 
@@ -50,7 +50,6 @@
         const hasilKhutbahContainer = document.getElementById('hasilKhutbahContainer');
         const hasilKhutbah = document.getElementById('hasilKhutbah');
 
-        // Fungsi merapikan tulisan AI agar nyaman dibaca di layar HP
         function formatTeks(teks) {
             return teks
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -65,64 +64,54 @@
                 return;
             }
 
-            // Nyalakan mode loading
             generateBtn.disabled = true;
             generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
             loadingIndicator.classList.remove('hidden');
             hasilKhutbahContainer.classList.add('hidden');
             hasilKhutbah.innerHTML = "";
 
-            // ============================================================
-            // PASTE / TEMPEL URL JEMBATAN GOOGLE SCRIPT ANDA DI BAWAH INI
-            // ============================================================
+            // URL Anda sudah saya tanam langsung di sini
             const urlJembatan = "https://script.google.com/macros/s/AKfycbxUDSy_AVCjESvruMvsQMbzgL_ptPw46UGppI8WFwDxHs5NvH0qYqSiuh9hYAMwB0BLYw/exec";
 
             try {
-                // Mengirim data menggunakan metode text/plain demi memotong blokir keamanan browser HP
+                // Konfigurasi fetch yang lebih kuat menahan redirect
                 const respons = await fetch(urlJembatan, {
+                    redirect: "follow",
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'text/plain'
+                        'Content-Type': 'text/plain;charset=utf-8'
                     },
                     body: JSON.stringify({ tema: tema })
                 });
 
-                if (!respons.ok) throw new Error("Jembatan sistem tidak merespons.");
+                const responText = await respons.text();
 
-                const data = await respons.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
+                // Deteksi jika Google masih mengirim halaman HTML
+                if (responText.includes("<!DOCTYPE html>") || responText.includes("<html")) {
+                    throw new Error("Akses Ditolak Server Google. Pastikan Anda sudah 'Deploy sebagai Versi Baru' dan set akses ke 'Siapa saja'.");
                 }
 
-                // Ambil hasil teks khutbah dari struktur data Google
+                const data = JSON.parse(responText);
+                
+                if (data.error) throw new Error("Kendala AI: " + data.error);
+
                 let teksJawaban = data.candidates[0].content.parts[0].text;
                 
-                // Tampilkan ke layar HP
                 hasilKhutbah.innerHTML = formatTeks(teksJawaban);
                 hasilKhutbahContainer.classList.remove('hidden');
 
             } catch (error) {
-                console.error(error);
+                let pesanError = error.message || String(error);
                 hasilKhutbah.innerHTML = `
-                    <span class="text-red-600 font-bold">Aplikasi Mengalami Kendala:</span><br>
-                    <span class="text-xs text-slate-500">${error.message}</span><br><br>
-                    <span class="text-xs text-slate-600">Pastikan Anda sudah mengganti tulisan <b class="text-slate-900">'URL_JEMBATAN_ANDA_DI_SINI'</b> dengan alamat Web App dari Google Apps Script Anda secara benar.</span>`;
+                    <span class="text-red-600 font-bold">Aplikasi Mengalami Kendala:</span><br><br>
+                    <span class="text-sm font-sans text-slate-700 bg-red-50 p-2 rounded block border border-red-200">${pesanError}</span>`;
                 hasilKhutbahContainer.classList.remove('hidden');
             } finally {
-                // Matikan mode loading
                 generateBtn.disabled = false;
                 generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 loadingIndicator.classList.add('hidden');
             }
         });
-
-        // Mendaftarkan sistem PWA agar bisa diinstal di HP offline
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
-            });
-        }
     </script>
 </body>
 </html>
