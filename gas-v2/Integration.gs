@@ -39,8 +39,7 @@ function researchKhatib_(tema) {
   const query = generateArabicSearchQuery_(String(tema).trim());
   const searchPayload = turathToolCall_('search_turath', {
     q: query,
-    page: 1,
-    limit: INTEGRATION_CONFIG.SEARCH_LIMIT
+    page: 1
   });
   const searchData = unwrapMcpToolResult_(searchPayload);
 
