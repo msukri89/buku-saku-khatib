@@ -2,51 +2,63 @@
 
 Tanggal pemeriksaan: 2026-10-17
 
-## Hasil pemeriksaan yang dapat dipastikan
+## Hasil pemeriksaan source yang dibagikan
 
-1. Frontend di `index.html` pada branch `main` memanggil Web App Apps Script melalui URL yang ditanam di JavaScript dan mengirim tema dengan metode GET (`?tema=...`).
-2. Frontend mengharapkan struktur respons yang menyerupai `data.candidates[0].content.parts[0].text`.
-3. Sumber Apps Script (`Code.gs` dan file terkait) tidak ada di repository yang diperiksa. URL Web App tidak dapat dibaca sebagai sumber oleh alat pemeriksaan ini. Karena itu, kode backend, metode penyimpanan API key saat ini, prompt, izin deployment, dan akses MCP belum dapat dinyatakan aman atau telah diverifikasi.
-4. Jangan menempelkan key/API token ke chat atau commit. Jangan mengubah deployment aktif sebelum source code diaudit dan versi baru diuji.
+Source yang dibagikan menggunakan sintaks Google Apps Script dan fungsi bawaan GAS, antara lain `doGet()`, `HtmlService`, `UrlFetchApp.fetch()`, serta `JSON.stringify()`.
 
-## Langkah aman: konfigurasi Script Properties
+### Arsitektur yang terlihat
 
-Lakukan pada project Apps Script yang benar-benar terkait dengan URL Web App lama.
+- `doGet()` menyajikan file HTML bernama `Index` dari project Apps Script.
+- `prosesKhutbah(tema, kategori)` memanggil `panggilAI()`.
+- `panggilAI()` mengirim permintaan chat-completions ke Together AI.
+- Model yang ditentukan di source adalah `meta-llama/Llama-3.3-70B-Instruct-Turbo`.
+- Kode ini belum memanggil MCP Turath dan belum mengambil sumber dalil secara terprogram.
+- Respons hanya mengembalikan teks dari `choices[0].message.content`; tidak ada struktur referensi sumber atau status verifikasi.
 
-1. Buka project dari Apps Script Dashboard: https://script.google.com/home
-2. Pastikan project yang dibuka adalah project yang digunakan oleh deployment Buku Saku Khatib. Cocokkan melalui menu Deploy > Manage deployments dan URL Web App. Jangan mengubah deployment dulu.
-3. Buka Project Settings.
-4. Di bagian Script Properties, tambahkan properti:
+### Temuan keamanan kritis
+
+**API token Together AI sempat ditempel sebagai teks langsung dalam percakapan. Perlakukan token itu sebagai telah terekspos.** Cabut/revoke token tersebut dari dashboard penyedia secepatnya, lalu buat token baru hanya jika masih diperlukan. Jangan gunakan ulang token yang terekspos. Nilai token tidak disalin ke dokumen ini atau repository.
+
+API key saat ini ditanam langsung di source melalui konstanta `API_KEY`. Pola ini harus dihilangkan. Setelah beralih ke Gemini, simpan key baru di Script Properties dengan nama `GEMINI_API_KEY`; kode membacanya melalui `PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY')`. Jangan pernah mengirim nilai key ke browser, URL, log, commit, issue, atau chat.
+
+### Ketidakcocokan dengan frontend GitHub yang diperiksa
+
+Frontend di repository lama mengirim GET ke URL Web App dengan parameter `?tema=...` dan mengharapkan JSON dalam bentuk `candidates[0].content.parts[0].text`.
+
+Sebaliknya, `doGet()` dalam source yang dibagikan hanya menyajikan file HTML `Index`; fungsi itu tidak membaca parameter `tema` atau mengembalikan JSON. `panggilAI()` mengembalikan teks biasa. Ini mengindikasikan source yang dibagikan kemungkinan merupakan project/versi berbeda dari endpoint yang dipanggil frontend GitHub, atau frontend/backend perlu diselaraskan. Jangan mengubah deployment aktif sebelum kita memastikan project dan URL yang benar.
+
+### Temuan kualitas dan validasi
+
+- Prompt meminta dalil lengkap dan valid, tetapi tidak ada retrieval atau pemeriksaan otomatis untuk memastikan teks Arab, terjemahan, nomor ayat/hadis, nama kitab, jilid, atau halaman benar.
+- Instruksi "valid 100%" tidak menjamin hasil model benar. Dalil dan atribusi perlu didukung hasil MCP yang benar-benar dikembalikan, dengan status verifikasi yang jujur.
+- `kategori` dipakai untuk memilih instruksi khusus, tetapi perlu validasi nilai kategori yang diterima.
+- Input tema tidak divalidasi panjang atau kontennya.
+- Error API diteruskan dengan isi respons mentah. Jangan sampai detail internal atau informasi sensitif bocor kepada pengguna.
+- Setelah migrasi, gunakan batas input/output, penanganan status HTTP, validasi JSON, rate limiting bila sesuai, dan logging tanpa secret.
+
+## Langkah aman: simpan Gemini API key
+
+Lakukan pada project Apps Script yang benar-benar terkait dengan deployment yang akan digunakan.
+
+1. Buka https://script.google.com/home.
+2. Pilih project yang benar dan cocokkan melalui Deploy > Manage deployments. Jangan deploy versi baru dahulu.
+3. Buka Project Settings > Script Properties.
+4. Tambahkan:
    - Property: `GEMINI_API_KEY`
-   - Value: tempel API key secara langsung di editor Script Properties.
-5. Simpan. Jangan menaruh nilai key di `Code.gs`, HTML, GitHub, URL, log, issue, atau chat.
-6. Batasi akses editor project kepada akun tepercaya. Script Properties bukan pengganti kontrol akses editor: editor yang berhak atas project dapat berpotensi membaca atau menggunakan rahasia project.
+   - Value: tempel key Gemini langsung di Script Properties.
+5. Simpan dan batasi akses editor kepada orang tepercaya.
 
-**Jangan menulis atau menjalankan kode pemanggil AI sebelum backend diaudit.** Pastikan dahulu bagaimana key lama dipakai, apakah ada fallback key yang tertanam, serta bagaimana request dan error dicatat.
+Script Properties bukan pengganti kontrol akses editor: editor project yang berhak dapat berpotensi membaca atau menggunakan rahasia project.
 
-## Cara membagikan source untuk audit
+## Pemeriksaan berikutnya
 
-Dari editor Apps Script, buka setiap file source (misalnya `Code.gs` dan file `.gs` lain yang berkaitan dengan request AI/MCP), salin isi source ke file teks/Markdown, lalu unggah file tersebut di percakapan ini untuk diperiksa.
+1. Konfirmasi apakah source ini berasal dari project yang sama dengan URL Web App yang tertanam pada frontend GitHub.
+2. Periksa daftar file project, terutama apakah ada file `Index.html` dan fungsi pemanggil dari frontend.
+3. Uji koneksi Gemini di project pengujian terpisah setelah key disimpan dengan aman.
+4. Periksa MCP Turath secara read-only dan catat tool yang benar-benar tersedia sebelum membuat adapter.
+5. Tetapkan format respons aplikasi yang stabil: naskah, kutipan sumber, metadata kitab/halaman jika tersedia, dan status verifikasi.
+6. Pertahankan deployment aktif serta branch `main` sampai semua tes lolos.
 
-Sebelum mengunggah, hapus atau ganti semua nilai rahasia dengan placeholder seperti `[REDACTED]`, termasuk:
-- API key AI lama/baru
-- access token, refresh token, OAuth client secret
-- password, cookie, bearer token
-- URL webhook rahasia atau kredensial lain
+## Batasan
 
-Nama properti seperti `GEMINI_API_KEY` boleh tetap terlihat; nilainya jangan disertakan. URL Web App yang sudah publik bukanlah API key, tetapi jangan sertakan URL deployment baru yang tidak ingin dipublikasikan.
-
-## Temuan risiko frontend yang perlu diperbaiki
-
-- Topik dikirim melalui GET sehingga dapat muncul dalam riwayat URL/log. Setelah audit backend, pertimbangkan POST dengan validasi input dan batas panjang.
-- Output AI dimasukkan melalui `innerHTML`. Untuk teks sumber dan output AI, utamakan `textContent` dan rendering yang di-escape; jangan menganggap output AI sebagai HTML tepercaya.
-- Frontend saat ini bergantung pada bentuk respons Gemini secara langsung. Backend sebaiknya mengembalikan kontrak JSON aplikasi yang stabil dan tervalidasi, bukan mengekspos respons mentah provider.
-- Jangan mengirim hasil ke pengguna sebagai "terverifikasi" kecuali referensi yang benar-benar dikembalikan MCP dapat ditelusuri dan diperiksa.
-
-## Tahap berikutnya setelah source tersedia
-
-1. Cari semua pemakaian API key dan pastikan tidak ada secret hard-coded.
-2. Audit `doGet`, `doPost`, izin deployment, validasi input, penanganan error, dan log.
-3. Audit koneksi MCP Turath secara read-only, daftar tool yang benar-benar tersedia, dan struktur metadata sumber.
-4. Tentukan migrasi minimal ke Script Properties dan endpoint backend baru tanpa mengganggu deployment aktif.
-5. Uji versi baru secara terpisah; pertahankan deployment aktif dan branch `main` sampai pengujian lulus.
+Kode yang dibagikan di chat adalah bukti untuk analisis, tetapi bukan bukti bahwa itu source dari deployment GitHub yang saat ini aktif. Pemeriksaan hubungan deployment perlu dilakukan dari editor Apps Script oleh pemilik project.
