@@ -573,3 +573,44 @@ function testTurathCategoryKeywordDiscovery() {
   });
 }
 
+/**
+ * UJI FILTER KATEGORI — cat_id wajib berupa LIST/ARRAY.
+ * Jalankan testTurathCategoryFilteredSearch() dan kirim log.
+ */
+function testTurathCategoryFilteredSearch() {
+  const categories = [
+    { ids: [3], name: 'التفسير' },
+    { ids: [7], name: 'شروح الحديث' },
+    { ids: [23], name: 'الرقائق والآداب والأذكار' }
+  ];
+
+  categories.forEach(function(category) {
+    console.log('===== UJI KATEGORI ' + category.ids.join(',') +
+      ': ' + category.name + ' =====');
+    try {
+      const response = turathToolCall_('search_turath', {
+        q: 'العدل والإحسان',
+        page: 1,
+        cat_id: category.ids
+      });
+      const data = unwrapMcpToolResult_(response);
+      const hits = extractSearchHits_(data);
+      console.log('JUMLAH HASIL TERBACA: ' + hits.length);
+      console.log('RINGKASAN: ' + JSON.stringify(hits.slice(0, 5).map(function(hit) {
+        const meta = hit.meta || {};
+        return {
+          book_id: hit.book_id,
+          judul: meta.book_name || '',
+          pengarang: meta.author_name || '',
+          cat_id: hit.cat_id,
+          page_id: meta.page_id,
+          kutipan: String(hit.snip || hit.text || '').substring(0, 250),
+          tautan: hit.link || ''
+        };
+      }), null, 2).substring(0, 7000));
+    } catch (err) {
+      console.error('GAGAL kategori ' + category.ids.join(',') + ': ' + err.message);
+    }
+  });
+}
+
