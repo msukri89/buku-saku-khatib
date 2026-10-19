@@ -407,3 +407,39 @@ function normalizeSource_(pageData, hit) {
     text: data.text || h.text || h.snip || ''
   };
 }
+
+
+/**
+ * TES DIAGNOSTIK: mencari dengan frasa Arab pendek yang sudah ditentukan.
+ * Jalankan fungsi testTurathShortSearch() dan lihat log.
+ * Fungsi ini tidak menggunakan Gemini agar pencarian dapat diuji terpisah.
+ */
+function testTurathShortSearch() {
+  const queries = [
+    'العدل والإحسان',
+    'إن الله يأمر بالعدل والإحسان'
+  ];
+
+  for (let i = 0; i < queries.length; i++) {
+    console.log('===== TES QUERY ' + (i + 1) + ': ' + queries[i] + ' =====');
+
+    try {
+      const response = turathToolCall_('search_turath', {
+        q: queries[i],
+        page: 1
+      });
+
+      const data = unwrapMcpToolResult_(response);
+      console.log('RAW DATA: ' + JSON.stringify(data).substring(0, 5000));
+
+      const hits = extractSearchHits_(data);
+      console.log('JUMLAH HASIL TERBACA: ' + hits.length);
+
+      if (hits.length) {
+        console.log('HASIL PERTAMA: ' + JSON.stringify(hits[0]).substring(0, 2500));
+      }
+    } catch (e) {
+      console.error('QUERY GAGAL: ' + e.message);
+    }
+  }
+}
