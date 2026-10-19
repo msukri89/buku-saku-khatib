@@ -539,3 +539,37 @@ function testTurathDiscoverCategories() {
   }
 }
 
+/**
+ * TES LANJUTAN: cari metadata kategori dengan beberapa kata kunci.
+ * Jalankan testTurathCategoryKeywordDiscovery().
+ * Jika server tetap hanya mengembalikan counts, berarti discover_turath
+ * tidak mengekspos nama/ID kategori lewat antarmuka ini dan kita perlu
+ * memakai hasil lain yang memang didukung server.
+ */
+function testTurathCategoryKeywordDiscovery() {
+  const terms = [
+    'تفسير',
+    'شرح الحديث',
+    'الحديث',
+    'الرقائق والأدب والأذكار',
+    'الرقائق',
+    'الأدب',
+    'الأذكار'
+  ];
+
+  terms.forEach(function(term) {
+    console.log('===== DISCOVER KATEGORI: ' + term + ' =====');
+    try {
+      const response = turathToolCall_('discover_turath', {
+        q: term,
+        kind: 'cats',
+        limit: 50
+      });
+      const data = unwrapMcpToolResult_(response);
+      console.log(JSON.stringify(data, null, 2).substring(0, 5000));
+    } catch (err) {
+      console.warn('GAGAL untuk "' + term + '": ' + err.message);
+    }
+  });
+}
+
