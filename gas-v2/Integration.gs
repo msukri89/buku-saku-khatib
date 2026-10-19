@@ -263,6 +263,13 @@ function scoreSearchHit_(hit, tema) {
   if (text.indexOf(normalizeArabicForSearch_('الإحسان')) >= 0) score += 2;
   if (text.indexOf(normalizeArabicForSearch_('الظلم')) >= 0) score += 1;
   if (text.indexOf(normalizeArabicForSearch_('الإنصاف')) >= 0) score += 1;
+
+  // Untuk tema tafsir ayat, utamakan kitab tafsir. Ini hanya heuristik
+  // pemeringkatan, bukan penilaian otoritas atau kesahihan sumber.
+  const title = normalizeArabicForSearch_(meta.book_name || '');
+  if (title.indexOf(normalizeArabicForSearch_('تفسير')) >= 0) score += 5;
+  else score -= 3;
+
   return score;
 }
 
@@ -303,12 +310,15 @@ function draftFromSources_(tema, sources) {
     '1. Gunakan hanya informasi yang didukung teks sumber.',
     '2. Jangan mengarang ayat, hadis, sanad, derajat hadis, kutipan, atau bibliografi.',
     '3. Bedakan parafrasa dari kutipan langsung.',
-    '4. Jika sumber tidak cukup mendukung klaim, tandai [PERLU VERIFIKASI SUMBER].',
-    '5. Jangan menyimpulkan hukum fiqih final atau mengklaim ijmak.',
-    '6. Jangan menganggap skor relevansi otomatis sebagai bukti sumber otoritatif.',
-    '7. Jika sumber tidak relevan, nyatakan keterbatasannya dan jangan paksakan.',
+    '4. Setiap poin bahan khutbah harus diakhiri dengan rujukan [Sumber N] yang benar-benar mendukung poin itu.',
+    '5. Jangan membuat nomor jilid/halaman yang tidak tercantum di metadata sumber.',
+    '6. Jika teks menyebut riwayat tanpa asal atau tanpa sanad, nyatakan peringatan itu tepat pada poin riwayat tersebut; jangan menyebutnya hadis sahih.',
+    '7. Jika sumber tidak cukup mendukung klaim, tandai [PERLU VERIFIKASI SUMBER] dan jangan membuat klaim lebih jauh.',
+    '8. Jangan menyimpulkan hukum fiqih final atau mengklaim ijmak.',
+    '9. Jangan menganggap skor relevansi otomatis sebagai bukti sumber otoritatif.',
+    '10. Jika sumber tidak relevan, nyatakan keterbatasannya dan jangan paksakan.',
     '',
-    'Format: ringkasan tema, maksimal tiga poin bahan khutbah, catatan kehati-hatian, daftar sumber.',
+    'Format: ringkasan tema, maksimal tiga poin bahan khutbah, catatan kehati-hatian, daftar sumber dengan judul, penulis, metadata jilid/halaman yang tersedia, dan tautan persis dari sumber.',
     '',
     sourceBundle
   ].join('\n');
