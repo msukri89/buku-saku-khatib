@@ -513,3 +513,29 @@ function testTurathShortSearch() {
     }
   }
 }
+
+/**
+ * AUDIT KATEGORI TURATH
+ * Jalankan testTurathDiscoverCategories() sebelum mengubah pencarian utama.
+ * Tujuan: melihat metadata kategori yang benar-benar dikembalikan server,
+ * lalu menentukan cat_id berdasarkan hasil aktual—bukan menebak ID.
+ */
+function testTurathDiscoverCategories() {
+  console.log('===== AUDIT KATEGORI TURATH =====');
+  try {
+    const response = turathToolCall_('discover_turath', {
+      kind: 'cats',
+      limit: 50
+    });
+    const data = unwrapMcpToolResult_(response);
+    const raw = JSON.stringify(data, null, 2);
+    console.log('HASIL DISCOVER KATEGORI (maksimal 12000 karakter):');
+    console.log(raw.substring(0, 12000));
+    console.log('===== AKHIR AUDIT KATEGORI =====');
+    return data;
+  } catch (err) {
+    console.error('AUDIT KATEGORI GAGAL: ' + err.message);
+    throw err;
+  }
+}
+
