@@ -32,38 +32,59 @@ function researchKhatib_(tema) {
     return { ok: false, error: 'Tema terlalu singkat.' };
   }
 
-  const queryGemini = generateArabicSearchQuery_(String(tema).trim());
-  const query = correctArabicQuery_(queryGemini);
+  const temaBersih = String(tema).trim();
+  const queryGemini = generateArabicSearchQuery_(temaBersih);
+  const queries = buildSearchQueries_(temaBersih, queryGemini);
+  let hitsGabungan = [];
+  const seenHits = {};
 
   console.log('KATA KUNCI DARI GEMINI: ' + queryGemini);
-  console.log('KATA KUNCI FINAL: ' + query);
+  console.log('DAFTAR QUERY TURATH: ' + JSON.stringify(queries));
 
-  const searchPayload = turathToolCall_('search_turath', {
-    q: query,
-    page: INTEGRATION_CONFIG.SEARCH_PAGE
-  });
-  const searchData = unwrapMcpToolResult_(searchPayload);
-  const hits = extractSearchHits_(searchData);
+  for (let qIndex = 0; qIndex < queries.length; qIndex++) {
+    try {
+      const response = turathToolCall_('search_turath', {
+        q: queries[qIndex],
+        page: 1
+      });
+      const data = unwrapMcpToolResult_(response);
+      const hits = extractSearchHits_(data);
 
-  console.log('JUMLAH HASIL TURATH: ' + hits.length);
-  if (hits.length) {
-    console.log('CONTOH HASIL PERTAMA: ' + JSON.stringify(hits[0]).substring(0, 1800));
+      console.log('QUERY ' + (qIndex + 1) + ' [' + queries[qIndex] +
+        '] menghasilkan ' + hits.length + ' hasil yang terbaca.');
+
+      hits.forEach(function(hit) {
+        const meta = hit.meta || {};
+        const key = String(hit.book_id) + ':' + String(meta.page_id || '');
+        if (!seenHits[key]) {
+          seenHits[key] = true;
+          hit._query_used = queries[qIndex];
+          hitsGabungan.push(hit);
+        }
+      });
+    } catch (err) {
+      console.warn('Pencarian gagal untuk query "' + queries[qIndex] +
+        '": ' + err.message);
+    }
+
+    if (hitsGabungan.length >= 20) break;
   }
 
-  if (!hits.length) {
+  console.log('TOTAL HASIL UNIK GABUNGAN: ' + hitsGabungan.length);
+
+  if (!hitsGabungan.length) {
     return {
       ok: true,
-      tema: tema,
-      query_arab: query,
+      tema: temaBersih,
+      query_arab: queries,
       status: 'SUMBER_BELUM_DITEMUKAN',
-      draf: 'Turath tidak mengembalikan hasil yang dapat dibaca. Periksa struktur respons dan kata kunci.',
+      draf: 'Tidak ada hasil yang dapat dibaca dari semua query. Periksa log per query.',
       sumber: []
     };
   }
 
-  // Nilai relevansi berdasarkan isi dan judul hasil Turath.
-  const ranked = hits.map(function(hit) {
-    return { hit: hit, score: scoreSearchHit_(hit, tema) };
+  const ranked = hitsGabungan.map(function(hit) {
+    return { hit: hit, score: scoreSearchHit_(hit, temaBersih) };
   }).sort(function(a, b) {
     return b.score - a.score;
   });
@@ -74,7 +95,8 @@ function researchKhatib_(tema) {
         score: item.score,
         book_id: item.hit.book_id,
         title: item.hit.meta && item.hit.meta.book_name,
-        page_id: item.hit.meta && item.hit.meta.page_id
+        page_id: item.hit.meta && item.hit.meta.page_id,
+        query: item.hit._query_used
       };
     })));
 
@@ -85,10 +107,10 @@ function researchKhatib_(tema) {
   if (!eligible.length) {
     return {
       ok: true,
-      tema: tema,
-      query_arab: query,
+      tema: temaBersih,
+      query_arab: queries,
       status: 'HASIL_ADA_TAPI_RELEVANSI_RENDAH',
-      draf: 'Turath mengembalikan hasil, tetapi tidak ada yang melewati ambang relevansi. Draf tidak dibuat agar sumber yang kurang sesuai tidak dipaksakan.',
+      draf: 'Turath mengembalikan hasil, tetapi tidak ada yang melewati ambang relevansi. Draf tidak dibuat.',
       sumber: ranked.slice(0, 5).map(function(item) {
         return {
           skor_relevansi: item.score,
@@ -103,19 +125,18 @@ function researchKhatib_(tema) {
   }
 
   const fullPages = [];
-  const seen = {};
+  const seenPages = {};
 
   for (let i = 0; i < eligible.length &&
       fullPages.length < INTEGRATION_CONFIG.FULL_PAGE_LIMIT; i++) {
     const hit = eligible[i].hit;
     const bookId = hit.book_id;
     const pageId = hit.meta && hit.meta.page_id;
-
     if (bookId == null || pageId == null) continue;
 
     const key = String(bookId) + ':' + String(pageId);
-    if (seen[key]) continue;
-    seen[key] = true;
+    if (seenPages[key]) continue;
+    seenPages[key] = true;
 
     try {
       const pagePayload = turathToolCall_('get_page', {
@@ -125,10 +146,9 @@ function researchKhatib_(tema) {
       const pageData = unwrapMcpToolResult_(pagePayload);
       const source = normalizeSource_(pageData, hit);
       source.skor_relevansi = eligible[i].score;
+      source.query_pencarian = hit._query_used || '';
 
-      if (source.text) {
-        fullPages.push(source);
-      }
+      if (source.text) fullPages.push(source);
     } catch (err) {
       console.warn('Gagal mengambil halaman ' + key + ': ' + err.message);
     }
@@ -137,24 +157,25 @@ function researchKhatib_(tema) {
   if (!fullPages.length) {
     return {
       ok: true,
-      tema: tema,
-      query_arab: query,
+      tema: temaBersih,
+      query_arab: queries,
       status: 'HALAMAN_SUMBER_GAGAL_DIBACA',
       draf: 'Hasil pencarian ada, tetapi halaman lengkap tidak berhasil dibaca. Draf tidak dibuat.',
       sumber: []
     };
   }
 
-  const draf = draftFromSources_(tema, fullPages);
+  const draf = draftFromSources_(temaBersih, fullPages);
   return {
     ok: true,
-    tema: tema,
-    query_arab: query,
+    tema: temaBersih,
+    query_arab: queries,
     status: 'SUMBER_DIPILIH_BERDASARKAN_RELEVANSI_PERLU_VERIFIKASI',
     draf: draf,
     sumber: fullPages.map(function(s) {
       return {
         skor_relevansi_internal: s.skor_relevansi,
+        query_pencarian: s.query_pencarian,
         judul: s.judul,
         penulis: s.penulis,
         jilid: s.jilid,
@@ -166,12 +187,49 @@ function researchKhatib_(tema) {
       };
     }),
     catatan: [
-      'Skor relevansi adalah penyaringan otomatis sederhana, bukan penilaian ilmiah.',
+      'Query dijalankan secara terpisah dan hasil unik digabungkan.',
+      'Skor relevansi adalah penyaringan otomatis sederhana, bukan verifikasi ilmiah.',
       'Buka tautan dan periksa konteks teks asli sebelum memakai sumber.',
       'Draf AI bukan fatwa dan wajib ditinjau ahli.',
       'Pencarian ini tidak memverifikasi derajat hadis.'
     ]
   };
+}
+
+function buildSearchQueries_(tema, queryGemini) {
+  const queries = [];
+  const add = function(q) {
+    q = correctArabicQuery_(q);
+    if (q && queries.indexOf(q) === -1) queries.push(q);
+  };
+
+  // Frasa inti yang terbukti mengembalikan hasil pada pengujian Turath.
+  if (/keadilan|ihsan|عدل|احسان|الإحسان/i.test(tema)) {
+    add('إن الله يأمر بالعدل والإحسان');
+    add('العدل والإحسان');
+  }
+
+  // Gemini boleh membantu, tetapi setiap query dipendekkan agar tidak
+  // menggabungkan banyak frasa yang saling mengganggu.
+  String(queryGemini || '').split(/[،,؛;\n]+/).forEach(function(part) {
+    const cleaned = part.replace(/^(موضوع|الكلمات المفتاحية|كلمات البحث)\s*[:：-]?\s*/i, '').trim();
+    if (cleaned) add(cleaned.split(/\s+/).slice(0, 5).join(' '));
+  });
+
+  if (!queries.length) add('العدل والإحسان');
+  return queries.slice(0, 4);
+}
+
+function correctArabicQuery_(query) {
+  let q = String(query || '').trim();
+  q = q.replace(/الإإحسان/g, 'الإحسان')
+       .replace(/الإاحسان/g, 'الإحسان')
+       .replace(/الإسان/g, 'الإحسان')
+       .replace(/الاحسان/g, 'الإحسان')
+       .replace(/احسان/g, 'إحسان')
+       .replace(/\s+/g, ' ')
+       .trim();
+  return q.substring(0, 180);
 }
 
 function generateArabicSearchQuery_(tema) {
