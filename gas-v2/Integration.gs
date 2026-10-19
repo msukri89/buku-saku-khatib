@@ -247,19 +247,18 @@ function generateArabicSearchQuery_(tema) {
 }
 
 function correctArabicQuery_(query) {
+  // Koreksi ejaan umum tanpa menambahkan frasa lain ke dalam query.
+  // Penambahan frasa inti di sini menyebabkan query terduplikasi.
   let q = String(query || '').trim();
-  // Koreksi ejaan umum dari model; lalu tambahkan frasa inti tema uji.
-  q = q.replace(/الإسان/g, 'الإحسان')
+  q = q.replace(/الإإحسان/g, 'الإحسان')
+       .replace(/الإاحسان/g, 'الإحسان')
+       .replace(/الإسان/g, 'الإحسان')
        .replace(/الاحسان/g, 'الإحسان')
        .replace(/احسان/g, 'إحسان')
-       .replace(/العدل\s+و\s+الإحسان/g, 'العدل والإحسان');
-
-  // Jangan mengandalkan kata kunci yang dibuat model saja untuk tema ini.
-  if (/العدل/.test(q) && /الإحسان|إحسان/.test(q)) {
-    q = 'إن الله يأمر بالعدل والإحسان ' + q;
-  }
-  if (!q) q = 'العدل والإحسان';
-  return q.substring(0, 300);
+       .replace(/العدل\s+و\s+الإحسان/g, 'العدل والإحسان')
+       .replace(/\s+/g, ' ')
+       .trim();
+  return q.substring(0, 180);
 }
 
 function scoreSearchHit_(hit, tema) {
