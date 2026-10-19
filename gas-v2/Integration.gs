@@ -246,21 +246,6 @@ function generateArabicSearchQuery_(tema) {
     .substring(0, 300);
 }
 
-function correctArabicQuery_(query) {
-  // Koreksi ejaan umum tanpa menambahkan frasa lain ke dalam query.
-  // Penambahan frasa inti di sini menyebabkan query terduplikasi.
-  let q = String(query || '').trim();
-  q = q.replace(/الإإحسان/g, 'الإحسان')
-       .replace(/الإاحسان/g, 'الإحسان')
-       .replace(/الإسان/g, 'الإحسان')
-       .replace(/الاحسان/g, 'الإحسان')
-       .replace(/احسان/g, 'إحسان')
-       .replace(/العدل\s+و\s+الإحسان/g, 'العدل والإحسان')
-       .replace(/\s+/g, ' ')
-       .trim();
-  return q.substring(0, 180);
-}
-
 function scoreSearchHit_(hit, tema) {
   const meta = hit.meta || {};
   const text = normalizeArabicForSearch_([
