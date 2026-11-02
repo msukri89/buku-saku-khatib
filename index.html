@@ -3,44 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buku Saku Khatib</title>
-    
-    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#065f46">
+    <meta name="description" content="Buku Saku Khatib — penyusunan khutbah Jumat berbasis dalil dan pemahaman ulama.">
+    <title>Buku Saku Khatib</title>
+    <link rel="manifest" href="manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-emerald-50 min-h-screen flex flex-col items-center p-4 font-serif">
-
     <main class="w-full max-w-md bg-white shadow-2xl rounded-2xl overflow-hidden mt-4 border-t-8 border-emerald-800">
-        
         <header class="bg-emerald-900 text-white text-center py-6 px-4">
             <h1 class="text-2xl font-bold tracking-wider">BUKU SAKU KHATIB</h1>
             <p class="text-emerald-200 text-sm mt-1 font-sans">Generator Khutbah Cerdas Mobile</p>
         </header>
 
-        <div class="p-6">
+        <section class="p-6">
             <div class="mb-5">
-                <label for="temaKhutbah" class="block text-emerald-900 font-semibold mb-2">Tema Khutbah:</label>
-                <input type="text" id="temaKhutbah" 
-                    class="w-full p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-600 outline-none font-sans" 
-                    placeholder="Contoh: Keutamaan Istighfar...">
+                <label for="temaKhutbah" class="block text-emerald-900 font-semibold mb-2">Tema Khutbah</label>
+                <input
+                    type="text"
+                    id="temaKhutbah"
+                    maxlength="300"
+                    autocomplete="off"
+                    class="w-full p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-600 outline-none font-sans"
+                    placeholder="Contoh: Menjaga shalat lima waktu"
+                    aria-describedby="formatInfo">
+                <p id="formatInfo" class="mt-2 text-xs leading-relaxed text-slate-600 font-sans">
+                    Profil penyusunan: <strong>Khutbah Ilmiah v2</strong> — hook sesuai tema, dalil, penjelasan ulama, dan materi padat. Aktivasi penuh memerlukan dukungan backend.
+                </p>
             </div>
 
-            <button id="generateBtn" 
-                class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 rounded-lg transition-colors shadow-md flex justify-center items-center gap-2 font-sans">
+            <button id="generateBtn"
+                class="w-full bg-emerald-700 hover:bg-emerald-800 disabled:hover:bg-emerald-700 text-white font-bold py-3 rounded-lg transition-colors shadow-md flex justify-center items-center gap-2 font-sans">
                 <span>Susun Khutbah</span>
             </button>
 
-            <div id="loadingIndicator" class="hidden mt-6 p-4 bg-emerald-100 rounded-lg border border-emerald-200 text-center text-emerald-800 font-sans text-sm animate-pulse">
-                <b>Sedang merangkai kalimat khutbah...</b><br>Mohon tunggu sekitar 5 sampai 10 detik.
+            <div id="loadingIndicator" class="hidden mt-6 p-4 bg-emerald-100 rounded-lg border border-emerald-200 text-center text-emerald-800 font-sans text-sm" role="status" aria-live="polite">
+                <b>Sedang menyusun naskah khutbah...</b><br>
+                Penelitian dan penyusunan dapat memerlukan waktu.
             </div>
 
             <div id="hasilKhutbahContainer" class="hidden mt-6 border-t border-emerald-100 pt-6">
-                <h2 class="text-emerald-800 font-bold mb-4 text-center border-b pb-2">Naskah Khutbah</h2>
-                <div id="hasilKhutbah" class="text-slate-800 leading-relaxed text-sm md:text-base text-justify whitespace-pre-wrap">
-                    </div>
+                <h2 class="text-emerald-800 font-bold mb-4 text-center border-b pb-2">Hasil Penyusunan</h2>
+                <div id="hasilKhutbah" class="text-slate-800 leading-relaxed text-sm md:text-base text-justify whitespace-pre-wrap break-words"></div>
             </div>
-        </div>
+        </section>
     </main>
 
     <script>
@@ -50,17 +56,42 @@
         const hasilKhutbahContainer = document.getElementById('hasilKhutbahContainer');
         const hasilKhutbah = document.getElementById('hasilKhutbah');
 
+        // Escape keluaran AI sebelum format sederhana diterapkan.
+        function escapeHtml(teks) {
+            return String(teks)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function formatTeks(teks) {
-            return teks
+            return escapeHtml(teks)
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                 .replace(/\*(.*?)\*/g, '<em>$1</em>')
                 .replace(/\n/g, '<br>');
         }
 
-        generateBtn.addEventListener('click', async () => {
+        function tampilkanError(pesan) {
+            hasilKhutbah.innerHTML =
+                '<div class="text-red-700 font-sans bg-red-50 p-3 rounded border border-red-200">' +
+                '<strong>Aplikasi mengalami kendala:</strong><br><br>' +
+                escapeHtml(pesan) +
+                '</div>';
+            hasilKhutbahContainer.classList.remove('hidden');
+        }
+
+        async function susunKhutbah() {
             const tema = temaKhutbah.value.trim();
             if (!tema) {
-                alert("Harap masukkan tema khutbah terlebih dahulu.");
+                alert('Harap masukkan tema khutbah terlebih dahulu.');
+                temaKhutbah.focus();
+                return;
+            }
+
+            if (tema.length > 300) {
+                alert('Tema terlalu panjang. Gunakan maksimal 300 karakter.');
                 return;
             }
 
@@ -68,46 +99,68 @@
             generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
             loadingIndicator.classList.remove('hidden');
             hasilKhutbahContainer.classList.add('hidden');
-            hasilKhutbah.innerHTML = "";
+            hasilKhutbah.textContent = '';
 
-            // URL Jembatan Anda
-            const urlJembatan = "https://script.google.com/macros/s/AKfycbxUDSy_AVCjESvruMvsQMbzgL_ptPw46UGppI8WFwDxHs5NvH0qYqSiuh9hYAMwB0BLYw/exec";
+            // Backend Google Apps Script yang saat ini dipakai proyek.
+            // Jangan menaruh API key atau rahasia di frontend.
+            const urlJembatan = 'https://script.google.com/macros/s/AKfycbxUDSy_AVCjESvruMvsQMbzgL_ptPw46UGppI8WFwDxHs5NvH0qYqSiuh9hYAMwB0BLYw/exec';
 
             try {
-                // Trik Anti-Blokir: Menempelkan tema langsung di ekor URL (Metode GET)
-                const targetUrl = urlJembatan + "?tema=" + encodeURIComponent(tema);
+                const params = new URLSearchParams({
+                    tema: tema,
+                    promptVersion: 'khutbah-ilmiah-v2'
+                });
+                const respons = await fetch(urlJembatan + '?' + params.toString());
 
-                const respons = await fetch(targetUrl);
+                if (!respons.ok) {
+                    throw new Error('Server tidak dapat memproses permintaan (HTTP ' + respons.status + ').');
+                }
+
                 const responText = await respons.text();
-
-                if (responText.includes("<html")) {
-                    throw new Error("Gagal: Jembatan masih menolak. Pastikan Anda sudah 'Deploy' sebagai 'Versi Baru'.");
+                if (responText.trim().startsWith('<')) {
+                    throw new Error('Backend mengembalikan halaman HTML, bukan data generator. Periksa deployment Google Apps Script.');
                 }
 
-                const data = JSON.parse(responText);
-                
+                let data;
+                try {
+                    data = JSON.parse(responText);
+                } catch (_) {
+                    throw new Error('Respons backend tidak berbentuk JSON yang valid.');
+                }
+
                 if (data.error) {
-                    let pesanPenolakan = typeof data.error === 'object' ? data.error.message : data.error;
-                    throw new Error("Dari Mesin AI: " + pesanPenolakan);
+                    const pesan = typeof data.error === 'object' ? data.error.message : data.error;
+                    throw new Error(String(pesan || 'Kesalahan dari backend AI.'));
                 }
 
-                let teksJawaban = data.candidates[0].content.parts[0].text;
+                const teksJawaban = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (typeof teksJawaban !== 'string' || !teksJawaban.trim()) {
+                    throw new Error('Respons AI tidak berisi teks khutbah yang dapat ditampilkan.');
+                }
+
                 hasilKhutbah.innerHTML = formatTeks(teksJawaban);
                 hasilKhutbahContainer.classList.remove('hidden');
-
             } catch (error) {
-                hasilKhutbah.innerHTML = `
-                    <span class="text-red-600 font-bold">Aplikasi Mengalami Kendala:</span><br><br>
-                    <span class="text-sm font-sans text-slate-700 bg-red-50 p-3 rounded block border border-red-200">
-                        ${error.message}
-                    </span>`;
-                hasilKhutbahContainer.classList.remove('hidden');
+                tampilkanError(error && error.message ? error.message : 'Terjadi kesalahan yang tidak diketahui.');
             } finally {
                 generateBtn.disabled = false;
                 generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 loadingIndicator.classList.add('hidden');
             }
+        }
+
+        generateBtn.addEventListener('click', susunKhutbah);
+        temaKhutbah.addEventListener('keydown', event => {
+            if (event.key === 'Enter') susunKhutbah();
         });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(error => {
+                    console.warn('Service worker belum dapat didaftarkan:', error);
+                });
+            });
+        }
     </script>
 </body>
 </html>
