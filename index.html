@@ -1,113 +1,160 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buku Saku Khatib</title>
-    
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#065f46">
-    <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#065f46">
+<meta name="description" content="Generator khutbah Jumat dengan bantuan penelitian kitab Maktabah Syamilah.">
+<title>Buku Saku Khatib</title>
+<link rel="manifest" href="manifest.json">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+  .arabic{font-family:"Noto Naskh Arabic","Amiri",serif;direction:rtl}
+  .tab-active{background:#065f46;color:#fff}
+  .safe-output{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.85}
+</style>
 </head>
-<body class="bg-emerald-50 min-h-screen flex flex-col items-center p-4 font-serif">
+<body class="min-h-screen bg-stone-50 text-slate-800">
+<div class="mx-auto max-w-3xl px-4 py-6 sm:py-10">
+  <header class="mb-6 rounded-3xl bg-emerald-950 px-6 py-7 text-white shadow-lg">
+    <div class="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-emerald-100">
+      <span class="h-2 w-2 rounded-full bg-emerald-300"></span> AI • Penelitian Turats
+    </div>
+    <h1 class="text-2xl font-bold tracking-wide sm:text-3xl">BUKU SAKU KHATIB</h1>
+    <p class="mt-2 max-w-xl text-sm leading-6 text-emerald-100">Susun naskah khutbah Jumat dengan bantuan Gemini dan penelusuran kitab Maktabah Syamilah.</p>
+  </header>
 
-    <main class="w-full max-w-md bg-white shadow-2xl rounded-2xl overflow-hidden mt-4 border-t-8 border-emerald-800">
-        
-        <header class="bg-emerald-900 text-white text-center py-6 px-4">
-            <h1 class="text-2xl font-bold tracking-wider">BUKU SAKU KHATIB</h1>
-            <p class="text-emerald-200 text-sm mt-1 font-sans">Generator Khutbah Cerdas Mobile</p>
-        </header>
+  <main class="space-y-5">
+    <section class="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+      <label for="temaKhutbah" class="mb-2 block text-sm font-semibold text-slate-800">Tema khutbah</label>
+      <textarea id="temaKhutbah" rows="3" maxlength="300" class="w-full resize-y rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-base outline-none transition focus:border-emerald-700 focus:bg-white focus:ring-4 focus:ring-emerald-700/10" placeholder="Contoh: Menjaga salat lima waktu menurut Al-Qur'an, hadis, dan ulama mazhab Syafi'i"></textarea>
+      <div class="mt-2 flex items-center justify-between text-xs text-slate-500"><span>Masukkan tema secara ringkas dan jelas.</span><span id="charCount">0/300</span></div>
+      <button id="generateBtn" class="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-800 px-5 py-3.5 font-semibold text-white shadow-sm transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50">
+        <span id="buttonLabel">Susun naskah khutbah</span>
+      </button>
+      <div id="errorBox" class="mt-4 hidden rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert"></div>
+    </section>
 
-        <div class="p-6">
-            <div class="mb-5">
-                <label for="temaKhutbah" class="block text-emerald-900 font-semibold mb-2">Tema Khutbah:</label>
-                <input type="text" id="temaKhutbah" 
-                    class="w-full p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-600 outline-none font-sans" 
-                    placeholder="Contoh: Keutamaan Istighfar...">
-            </div>
+    <section id="progressBox" class="hidden rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
+      <div class="flex items-center gap-3">
+        <div class="h-5 w-5 animate-spin rounded-full border-2 border-emerald-700 border-t-transparent"></div>
+        <div><p class="font-semibold text-emerald-950">Sedang menyusun khutbah</p><p class="text-sm text-emerald-800">Menelusuri bahan dan meminta Gemini menyusun naskah. Proses dapat memerlukan waktu.</p></div>
+      </div>
+    </section>
 
-            <button id="generateBtn" 
-                class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 rounded-lg transition-colors shadow-md flex justify-center items-center gap-2 font-sans">
-                <span>Susun Khutbah</span>
-            </button>
+    <section id="researchPanel" class="hidden rounded-3xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div><p class="text-xs font-semibold uppercase tracking-wider text-emerald-800">Penelitian sumber</p><h2 class="mt-1 text-lg font-bold">Maktabah Syamilah</h2></div>
+        <span id="researchBadge" class="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700">Menunggu data</span>
+      </div>
+      <p id="researchNotice" class="mt-3 text-sm leading-6 text-slate-600"></p>
+      <div id="sourceList" class="mt-4 space-y-3"></div>
+    </section>
 
-            <div id="loadingIndicator" class="hidden mt-6 p-4 bg-emerald-100 rounded-lg border border-emerald-200 text-center text-emerald-800 font-sans text-sm animate-pulse">
-                <b>Sedang merangkai kalimat khutbah...</b><br>Mohon tunggu sekitar 5 sampai 10 detik.
-            </div>
-
-            <div id="hasilKhutbahContainer" class="hidden mt-6 border-t border-emerald-100 pt-6">
-                <h2 class="text-emerald-800 font-bold mb-4 text-center border-b pb-2">Naskah Khutbah</h2>
-                <div id="hasilKhutbah" class="text-slate-800 leading-relaxed text-sm md:text-base text-justify whitespace-pre-wrap">
-                    </div>
-            </div>
+    <section id="resultPanel" class="hidden overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm">
+      <div class="border-b border-stone-200 px-5 py-4 sm:px-6">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div><p class="text-xs font-semibold uppercase tracking-wider text-emerald-800">Hasil penyusunan</p><h2 class="mt-1 text-xl font-bold">Naskah khutbah</h2></div>
+          <button id="copyBtn" class="rounded-xl border border-emerald-800 px-4 py-2 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-50">Salin naskah</button>
         </div>
-    </main>
+      </div>
+      <div class="p-5 sm:p-6">
+        <div id="hasilKhutbah" class="safe-output text-sm sm:text-base"></div>
+      </div>
+    </section>
+    <p class="px-2 text-center text-xs leading-5 text-slate-500">Periksa kembali dalil, kutipan Arab, dan referensi sebelum naskah disampaikan. Status pencarian bukan pengganti verifikasi ilmiah.</p>
+  </main>
+</div>
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbxUDSy_AVCjESvruMvsQMbzgL_ptPw46UGppI8WFwDxHs5NvH0qYqSiuh9hYAMwB0BLYw/exec";
+const $ = id => document.getElementById(id);
+const btn = $("generateBtn"), topic = $("temaKhutbah");
+let latestText = "";
 
-    <script>
-        const generateBtn = document.getElementById('generateBtn');
-        const temaKhutbah = document.getElementById('temaKhutbah');
-        const loadingIndicator = document.getElementById('loadingIndicator');
-        const hasilKhutbahContainer = document.getElementById('hasilKhutbahContainer');
-        const hasilKhutbah = document.getElementById('hasilKhutbah');
+topic.addEventListener("input", () => $("charCount").textContent = topic.value.length + "/300");
 
-        function formatTeks(teks) {
-            return teks
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/\n/g, '<br>');
-        }
-
-        generateBtn.addEventListener('click', async () => {
-            const tema = temaKhutbah.value.trim();
-            if (!tema) {
-                alert("Harap masukkan tema khutbah terlebih dahulu.");
-                return;
-            }
-
-            generateBtn.disabled = true;
-            generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            loadingIndicator.classList.remove('hidden');
-            hasilKhutbahContainer.classList.add('hidden');
-            hasilKhutbah.innerHTML = "";
-
-            // URL Jembatan Anda
-            const urlJembatan = "https://script.google.com/macros/s/AKfycbxUDSy_AVCjESvruMvsQMbzgL_ptPw46UGppI8WFwDxHs5NvH0qYqSiuh9hYAMwB0BLYw/exec";
-
-            try {
-                // Trik Anti-Blokir: Menempelkan tema langsung di ekor URL (Metode GET)
-                const targetUrl = urlJembatan + "?tema=" + encodeURIComponent(tema);
-
-                const respons = await fetch(targetUrl);
-                const responText = await respons.text();
-
-                if (responText.includes("<html")) {
-                    throw new Error("Gagal: Jembatan masih menolak. Pastikan Anda sudah 'Deploy' sebagai 'Versi Baru'.");
-                }
-
-                const data = JSON.parse(responText);
-                
-                if (data.error) {
-                    let pesanPenolakan = typeof data.error === 'object' ? data.error.message : data.error;
-                    throw new Error("Dari Mesin AI: " + pesanPenolakan);
-                }
-
-                let teksJawaban = data.candidates[0].content.parts[0].text;
-                hasilKhutbah.innerHTML = formatTeks(teksJawaban);
-                hasilKhutbahContainer.classList.remove('hidden');
-
-            } catch (error) {
-                hasilKhutbah.innerHTML = `
-                    <span class="text-red-600 font-bold">Aplikasi Mengalami Kendala:</span><br><br>
-                    <span class="text-sm font-sans text-slate-700 bg-red-50 p-3 rounded block border border-red-200">
-                        ${error.message}
-                    </span>`;
-                hasilKhutbahContainer.classList.remove('hidden');
-            } finally {
-                generateBtn.disabled = false;
-                generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                loadingIndicator.classList.add('hidden');
-            }
-        });
-    </script>
+function escapeHtml(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function formatPlainText(value) {
+  // Escape all model-provided content before adding minimal formatting.
+  return escapeHtml(value).replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\*(.*?)\*/g, "<em>$1</em>");
+}
+function getAnswer(data) {
+  if (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+    return data.candidates[0].content.parts.map(p => p.text || "").join("\n");
+  }
+  if (data && typeof data.text === "string") return data.text;
+  return "";
+}
+function showResearch(info) {
+  if (!info) return;
+  $("researchPanel").classList.remove("hidden");
+  const statusMap = {completed:"Pencarian selesai",no_results:"Tidak ada hasil",planning_failed:"Rencana pencarian gagal",error:"Ada kendala",not_run:"Belum dijalankan"};
+  const status = statusMap[info.status] || "Status tidak diketahui";
+  $("researchBadge").textContent = status + " • " + (info.sourceCount || 0) + " sumber";
+  $("researchNotice").textContent = info.notice || "Informasi teknis penelitian yang dikembalikan backend.";
+  const list = $("sourceList");
+  list.replaceChildren();
+  (info.sources || []).forEach((source, index) => {
+    const card = document.createElement("article");
+    card.className = "rounded-2xl border border-stone-200 bg-stone-50 p-4";
+    const title = document.createElement("h3");
+    title.className = "font-semibold text-slate-900";
+    title.textContent = (index + 1) + ". " + (source.title || "Kitab tidak tercatat");
+    const meta = document.createElement("p");
+    meta.className = "mt-1 text-sm leading-6 text-slate-600";
+    meta.textContent = [source.author, source.printedPage ? "Jilid/halaman: " + source.printedPage : "", source.readStatus].filter(Boolean).join(" • ");
+    card.append(title, meta);
+    if (source.url && /^https:\/\//i.test(source.url)) {
+      const link = document.createElement("a");
+      link.href = source.url; link.target = "_blank"; link.rel = "noopener noreferrer";
+      link.className = "mt-2 inline-block text-sm font-semibold text-emerald-800 underline";
+      link.textContent = "Buka sumber";
+      card.append(link);
+    }
+    list.append(card);
+  });
+  if (!info.sources || !info.sources.length) {
+    const empty = document.createElement("p");
+    empty.className = "rounded-xl bg-amber-50 p-3 text-sm text-amber-900";
+    empty.textContent = "Backend belum mengembalikan rincian sumber untuk permintaan ini.";
+    list.append(empty);
+  }
+}
+btn.addEventListener("click", async () => {
+  const tema = topic.value.trim();
+  $("errorBox").classList.add("hidden");
+  if (!tema) { $("errorBox").textContent = "Silakan isi tema khutbah terlebih dahulu."; $("errorBox").classList.remove("hidden"); topic.focus(); return; }
+  btn.disabled = true; $("buttonLabel").textContent = "Sedang memproses...";
+  $("progressBox").classList.remove("hidden"); $("resultPanel").classList.add("hidden"); $("researchPanel").classList.add("hidden");
+  try {
+    const response = await fetch(API_URL + "?tema=" + encodeURIComponent(tema));
+    const raw = await response.text();
+    if (raw.trim().startsWith("<")) throw new Error("Backend mengembalikan halaman HTML. Periksa URL dan deployment Google Apps Script.");
+    const data = JSON.parse(raw);
+    if (data.error) throw new Error(typeof data.error === "object" ? data.error.message : (data.message || data.error));
+    const answer = getAnswer(data);
+    if (!answer) throw new Error("Respons AI tidak berisi naskah yang dapat ditampilkan.");
+    latestText = answer;
+    $("hasilKhutbah").innerHTML = formatPlainText(answer);
+    $("resultPanel").classList.remove("hidden");
+    showResearch(data._research);
+  } catch (err) {
+    $("errorBox").textContent = err && err.message ? err.message : "Terjadi kendala saat membuat khutbah.";
+    $("errorBox").classList.remove("hidden");
+  } finally {
+    $("progressBox").classList.add("hidden"); btn.disabled = false; $("buttonLabel").textContent = "Susun naskah khutbah";
+  }
+});
+$("copyBtn").addEventListener("click", async () => {
+  if (!latestText) return;
+  try { await navigator.clipboard.writeText(latestText); $("copyBtn").textContent = "Tersalin ✓"; }
+  catch (e) { $("copyBtn").textContent = "Tidak dapat menyalin"; }
+  setTimeout(() => $("copyBtn").textContent = "Salin naskah", 1800);
+});
+if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+</script>
 </body>
 </html>
